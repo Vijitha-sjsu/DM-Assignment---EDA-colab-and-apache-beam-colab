@@ -5,7 +5,7 @@
 - Code files uploaded
 
 ## 2. Auto EDA with Pandas Profiling
-- Google doc with report findings
+- Google doc with report findings - https://docs.google.com/document/d/1GGQ0hLvfav3sZ3s7SzyfSXg8v4ESm4KIH--HqiBSYy8/edit?usp=sharing
 - Code file uploaded: pand.py
 - Pandas profiling report uploaded: output_report.html
 

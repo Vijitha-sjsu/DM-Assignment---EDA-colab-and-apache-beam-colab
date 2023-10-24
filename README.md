@@ -9,6 +9,7 @@
 - Code file uploaded: pand.py
 - Pandas profiling report uploaded: output_report.html
 
-## 3. 
+## 3. Apache Beam Features Demonstration
+- Google Colab link - https://colab.research.google.com/drive/1rA-P_5wifU4BpIaU8QDMv6T47tdxigtY?usp=sharing
 
  

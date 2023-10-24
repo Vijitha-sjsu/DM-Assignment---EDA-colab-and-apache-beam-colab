@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>D3 Visualization</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* to prevent scrollbars */
+        }
+
+        .node {
+            cursor: pointer;
+        }
+
+        .node:hover {
+            stroke: #000;
+            stroke-width: 1.5px;
+        }
+
+        .node--leaf {
+            fill: white;
+        }
+
+        .label {
+            font: 11px "Helvetica Neue", Helvetica, Arial, sans-serif;
+            text-anchor: middle;
+            text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff, 0 -1px 0 #fff;
+        }
+
+        .label,
+        .node--root,
+        .node--leaf {
+            pointer-events: none;
+        }
+
+        #playerInfo {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border: 1px solid #ddd;
+            max-width: 300px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <svg width="100%" height="100%"></svg>
+    <div id="playerInfo"></div>
+
+    <script>
+        var svg = d3.select("svg"),
+            width = window.innerWidth,
+            height = window.innerHeight,
+            diameter = Math.min(width, height),
+            margin = 20,
+            g = svg.append("g").attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+
+        var color = d3.scaleSequential(d3.interpolateBlues)
+            .domain([-4, 4]);
+
+        // Define colors for the countries
+        var countryColors = d3.scaleOrdinal(d3.schemeCategory10); // d3.schemeCategory10 provides a list of 10 colors
+
+        var pack = d3.pack()
+            .size([diameter - margin, diameter - margin])
+            .padding(2);
+
+        d3.json("output.json").then(function(root) {
+          root = d3.hierarchy(root)
+            .sum(function (d) { return d.size; })
+            .sort(function (a, b) { return b.value - a.value; });
+
+          var focus = root,
+            nodes = pack(root).descendants(),
+            view;
+
+          var circle = g.selectAll("circle")
+            .data(nodes)
+            .enter().append("circle")
+            .attr("class", function (d) { return d.parent ? d.children ? "node" : "node node--leaf" : "node node--root"; })
+            .style("fill", function (d) {
+                if (d.children && d.depth === 2) {  // Check for country level, which is at depth 2 in your hierarchy
+                    return countryColors(d.data.name);  // Use the country name to determine the color
+                } else {
+                    return d.children ? color(d.depth) : null;
+                }
+            })
+            .on("click", function (event, d) { 
+                if (focus !== d) {
+                    zoom(d, event);
+                    event.stopPropagation(); 
+                }
+            })
+            .each(function(d) {
+                if (d.depth === 2) {  // Only for country-level nodes
+                    d3.select(this).append("title").text(d.data.name);
+                };
+             });
+
+            var text = g.selectAll("text")
+                .data(nodes)
+                .enter().append("text")
+                .attr("class", "label")
+                .style("fill-opacity", function (d) { return d.parent === root ? 1 : 0; })
+                .style("display", function (d) { return d.parent === root ? "inline" : "none"; })
+                .text(function (d) { return d.data.name; });
+
+            var node = g.selectAll("circle,text");
+
+            svg
+                .style("background", "black")
+                .on("click", function(event) { zoom(root, event); });
+
+            zoomTo([root.x, root.y, root.r * 2 + margin]);
+
+            function zoom(d, event) {
+                var focus0 = focus; focus = d;
+
+                var transition = d3.transition()
+                    .duration(event.altKey ? 7500 : 750)
+                    .tween("zoom", function (d) {
+                        var i = d3.interpolateZoom(view, [focus.x, focus.y, focus.r * 2 + margin]);
+                        return function (t) { zoomTo(i(t)); };
+                    });
+
+                transition.selectAll("text")
+                    .filter(function (d) { return d.parent === focus || this.style.display === "inline"; })
+                    .style("fill-opacity", function (d) { return d.parent === focus ? 1 : 0; })
+                    .on("start", function (d) { if (d.parent === focus) this.style.display = "inline"; })
+                    .on("end", function (d) { if (d.parent !== focus) this.style.display = "none"; });
+            }
+
+            function zoomTo(v) {
+                var k = diameter / v[2]; view = v;
+                node.attr("transform", function (d) { return "translate(" + (d.x - v[0]) * k + "," + (d.y - v[1]) * k + ")"; });
+                circle.attr("r", function (d) { return d.r * k; });
+            }
+
+            function updatePlayerInfo(d) {
+                var container = d3.select("#playerInfo");
+                container.html(""); // Clear any previous content
+                
+                if (!d.children) {
+                    container.append("h4").text(d.data.name);
+                } else {
+                    var list = container.append("ul");
+                    d.children.forEach(function(child) {
+                        list.append("li").text(child.data.name);
+                    });
+                }
+            }
+
+        }).catch(function (error) {
+            console.error("Error loading JSON: ", error);
+        });
+    </script>
+</body>
+
+</html>
